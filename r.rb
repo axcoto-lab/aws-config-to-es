@@ -13,36 +13,46 @@ Dir.foreach("#{Dir.pwd}/") do |fname|
   doc     = JSON.parse content
 
   doc['configurationItems'].each do |ci|
+    body = Hash.new
     events = []
     begin
       existed_doc = client.get index: 'aws', type: 'resource', id: ci["resourceId"]
+      body = existed_doc["_source"]
       events = existed_doc["_source"]["events"].reject { |e| e.nil? }
     rescue Exception => e
     end
 
-    begin
-      body = {
-        "tags"=> ci["tags"],
-        "awsAccountId"=> ci["awsAccountId"],
+    if body["tags"].nil?
+      body["tags"] = Hash.new
+    end
+
+    body["tags"].merge!(ci["tags"])
+
+    body.merge!({
+        "awsAccountId" => ci["awsAccountId"],
         "resourceType" => ci["resourceType"],
         "resourceId"   => ci["resourceId"],
 
-        "resourceCreationTime"=> ci["resourceCreationTime"],
-        "awsRegion"=> ci["awsRegion"],
-        "availabilityZone"=> ci["availabilityZone"],
-        "ARN"=> ci["ARN"],
-        "events" => events
-      }
+        "resourceCreationTime"=> body["resourceCreationTime"] || ci["resourceCreationTime"],
+        "awsRegion"=> body["awsRegion"] || ci["awsRegion"],
+        "availabilityZone"=> body["availabilityZone"] || ci["availabilityZone"],
+        "ARN"=> body["ARN"] || ci["ARN"],
+        "events" => events,
+    })
 
+    begin
       if ci["configuration"]
+        body.merge!({
+        "launchTime"=> ci["configuration"]["launchTime"],
+        "vpcId"=> ci["configuration"]["vpcId"],
+        "instanceId"=> ci["configuration"]["instanceId"],
+        })
+
         body['events'] << {
         "configurationItemStatus" => ci["configurationItemStatus"],
         "configurationItemCaptureTime" => ci["configurationItemCaptureTime"],
         "clientToken" => ci["configuration"]["clientToken"],
         "keyName" => ci["configuration"]["keyName"],
-        "launchTime"=> ci["configuration"]["launchTime"],
-        "vpcId"=> ci["configuration"]["vpcId"],
-        "instanceId"=> ci["configuration"]["instanceId"],
         "stateReason"=> ci["configuration"]["stateReason"],
         }
       end
