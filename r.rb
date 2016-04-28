@@ -5,6 +5,7 @@ require 'pp'
 client = Elasticsearch::Client.new log: true
 client.transport.reload_connections!
 
+AWS_INDEX = 'aws'
 
 Dir.foreach("#{Dir.pwd}/") do |fname|
   next unless fname.end_with?(".json")
@@ -16,7 +17,7 @@ Dir.foreach("#{Dir.pwd}/") do |fname|
     body = Hash.new
     events = []
     begin
-      existed_doc = client.get index: 'aws', type: 'resource', id: ci["resourceId"]
+      existed_doc = client.get index: AWS_INDEX, type: 'resource', id: ci["resourceId"]
       body = existed_doc["_source"]
       events = existed_doc["_source"]["events"].reject { |e| e.nil? }
     rescue Exception => e
@@ -64,6 +65,6 @@ Dir.foreach("#{Dir.pwd}/") do |fname|
     pp body
     puts ">>>>>>>>>>>>>>>>"
 
-    client.index index: 'aws', type: 'resource', id: ci['resourceId'], body: body
+    client.index index: AWS_INDEX, type: 'resource', id: ci['resourceId'], body: body
   end
 end
